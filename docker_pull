@@ -23,9 +23,10 @@ class DockerPuller(object):
         cmd = [self._docker(docker), 'pull']
 
         if self.tag:
-            cmd += ['-t', self.tag]
+            self.repo += ':' + self.tag
 
         cmd += [self.repo]
+
         rc, out, err = self._run(cmd)
 
         if rc is not None and rc != 0:
