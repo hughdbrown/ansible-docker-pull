@@ -22,10 +22,12 @@ class DockerPuller(object):
         checksum = self._get_images_checksum(docker)
         cmd = [self._docker(docker), 'pull']
 
+        repo = self.repo
         if self.tag:
-            cmd += ['-t', self.tag]
+            repo += ':' + self.tag
 
-        cmd += [self.repo]
+        cmd += [repo]
+
         rc, out, err = self._run(cmd)
 
         if rc is not None and rc != 0:
