@@ -1,14 +1,7 @@
-#!/usr/bin/python
-# vim:fileencoding=utf-8
-
-DOCUMENTATION = """
----
-"""
-
-EXAMPLES = """
-"""
-
+#!/usr/bin/env python
 from hashlib import md5
+
+from ansible.module_utils.basic import *
 
 
 class DockerPuller(object):
@@ -16,17 +9,13 @@ class DockerPuller(object):
     def __init__(self, module):
         self.module = module
         self.repo = module.params['repo']
-        self.tag = module.params['tag']
+        self.tag = module.params.get('tag', 'latest')
 
     def pull_repo(self, docker='docker'):
         checksum = self._get_images_checksum(docker)
-        cmd = [self._docker(docker), 'pull']
+        repo = "{0.repo}:{0.tag}".format(self)
 
-        repo = self.repo
-        if self.tag:
-            repo += ':' + self.tag
-
-        cmd += [repo]
+        cmd = [self._docker(docker), 'pull', repo]
 
         rc, out, err = self._run(cmd)
 
@@ -70,39 +59,31 @@ def _md5sum(string):
 
 def main():
     module = AnsibleModule(
-        argument_spec=dict(
-            state=dict(default='present', choices=['present']),
-            repo=dict(required=True),
-            tag=dict(default='', required=False),
-        ),
+        argument_spec={
+            'state': {'default': 'present', 'choices': ['present']},
+            'repo': {'required': True},
+            'tag': {'default': '', 'required': False},
+        },
         supports_check_mode=True
     )
-
-    puller = DockerPuller(module)
-
-    rc = None
-    out = ''
-    err = ''
-    result = {}
 
     if module.check_mode:
         module.exit_json(changed=False)
 
+    puller = DockerPuller(module)
+    rc, out, err = None, '', ''
     (rc, out, err), changed = puller.pull_repo()
 
-    if rc is None:
-        result['changed'] = False
-    else:
-        result['changed'] = changed
-
-    if out:
-        result['stdout'] = out
-    if err:
-        result['stderr'] = err
+    handle, content = ('stdout', out) if out else ('stderr', err)
+    result = {
+        'changed': (rc is not None) and changed,
+        handle: content,
+    }
 
     module.exit_json(**result)
 
 
 # include magic from lib/ansible/module_common.py
 #<<INCLUDE_ANSIBLE_MODULE_COMMON>>
-main()
+if __name__ == '__main__':
+    main()
